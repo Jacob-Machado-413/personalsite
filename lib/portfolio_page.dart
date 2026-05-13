@@ -440,8 +440,8 @@ class _PortfolioPageState extends State<PortfolioPage>
         const SizedBox(height: 16),
         _projectCard(
           'Youth Group CRM',
-          '.NET, Flutter, Dart, C# — made a mobile-first CRM system for my church\'s youth group.'
-              'mobile and desktop ui, mostly to track attendance and manage group activities.',
+          '.NET, Flutter, Dart, C# — made a CRM system for my church\'s youth group.'
+              ' mobile and desktop ui, mostly to track attendance trends and manage group activities.',
         ),
         const SizedBox(height: 16),
         _projectCard(
