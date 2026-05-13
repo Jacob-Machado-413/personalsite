@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+#manually added
+Jacob_Machado_CV.md
+Dockerfile
