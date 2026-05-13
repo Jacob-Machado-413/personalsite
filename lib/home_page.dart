@@ -338,10 +338,20 @@ class _HomePageState extends State<HomePage>
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       const SizedBox(height: 16),
-                      Text(
-                        "Follow a red fish to dive deeper.",
-                        style: TextStyle(fontSize: 24, color: Colors.white),
-                        textAlign: TextAlign.center,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          "Follow a red fish to dive deeper.",
+                          style: TextStyle(fontSize: 20, color: Colors.black87),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ],
                   ),
