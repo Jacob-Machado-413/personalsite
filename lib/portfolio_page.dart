@@ -1,11 +1,7 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'water_background.dart';
-import 'fish_model.dart';
-import 'fish_widget.dart';
-import 'stream_line_model.dart';
+import 'fish_background.dart';
 
 class PortfolioPage extends StatefulWidget {
   const PortfolioPage({super.key});
@@ -14,105 +10,11 @@ class PortfolioPage extends StatefulWidget {
   State<PortfolioPage> createState() => _PortfolioPageState();
 }
 
-class _PortfolioPageState extends State<PortfolioPage>
-    with SingleTickerProviderStateMixin {
-  // ── Water / fish config ──────────────────────────────────────────────────
-  static const int _fishCount = 30;
-  static const int _streamLineCount = 12;
-  static const double _fishSpeed = 1.2;
-  static const double _fishAlpha = 0.18;
-
+class _PortfolioPageState extends State<PortfolioPage> {
   // ── Text colors (dark on white) ──────────────────────────────────────────
   static const Color _dark = Color(0xFF1A1A1A);
   static const Color _muted = Color(0xFF5A6A7A);
   static const Color _accent = Color(0xFF0D7CB0);
-
-  late Ticker _ticker;
-  final List<FishModel> _fishes = [];
-  final List<StreamLineModel> _streamLines = [];
-  final Random _random = Random();
-  bool _initialized = false;
-  Size? _lastSize;
-  Duration _lastTick = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _ticker = createTicker(_tick)..start();
-  }
-
-  void _init(Size size) {
-    if (_initialized) return;
-    _initialized = true;
-    _lastSize = size;
-
-    for (int i = 0; i < _streamLineCount; i++) {
-      _streamLines.add(
-        StreamLineModel(
-          x: _random.nextDouble() * size.width,
-          y: _random.nextDouble() * size.height,
-          length: 40 + _random.nextDouble() * 100,
-          thickness: 1 + _random.nextDouble() * 1.5,
-          speed: (0.3 + _random.nextDouble() * 0.7) * _fishSpeed * 0.4,
-          opacity: 0.06 + _random.nextDouble() * 0.10,
-        ),
-      );
-    }
-
-    for (int i = 0; i < _fishCount; i++) {
-      _fishes.add(
-        FishModel(
-          x: _random.nextDouble() * size.width,
-          y: _random.nextDouble() * size.height,
-          dx: (0.08 + _random.nextDouble() * 0.25) * _fishSpeed,
-          dy: (_random.nextDouble() - 0.5) * 0.2,
-          color: Colors.blueAccent.withValues(alpha: _fishAlpha),
-          size: 25 + _random.nextDouble() * 35,
-        ),
-      );
-    }
-  }
-
-  void _tick(Duration elapsed) {
-    if (!mounted) return;
-    double dt = (elapsed.inMilliseconds - _lastTick.inMilliseconds) / 16.666;
-    if (dt > 10.0) dt = 1.0;
-    _lastTick = elapsed;
-
-    final mediaSize = MediaQuery.of(context).size;
-    if (mediaSize.width == 0 || mediaSize.height == 0) return;
-
-    setState(() {
-      if (_lastSize != null &&
-          (mediaSize.width != _lastSize!.width ||
-              mediaSize.height != _lastSize!.height)) {
-        double sx = mediaSize.width / _lastSize!.width;
-        double sy = mediaSize.height / _lastSize!.height;
-        for (var f in _fishes) {
-          f.x *= sx;
-          f.y *= sy;
-        }
-        for (var l in _streamLines) {
-          l.x *= sx;
-          l.y *= sy;
-        }
-      }
-      _lastSize = mediaSize;
-
-      for (var f in _fishes) {
-        f.update(dt, mediaSize);
-      }
-      for (var l in _streamLines) {
-        l.update(dt, mediaSize);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _ticker.dispose();
-    super.dispose();
-  }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   Future<void> _launch(String raw) async {
@@ -129,23 +31,13 @@ class _PortfolioPageState extends State<PortfolioPage>
       backgroundColor: const Color(0xFF0D3B66),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final size = Size(constraints.maxWidth, constraints.maxHeight);
-          if (size.width > 0 && !_initialized) _init(size);
-
           return WaterBackground(
             topColor: const Color.fromARGB(255, 125, 218, 255),
             bottomColor: const Color.fromARGB(255, 49, 155, 197),
             child: Stack(
               children: [
                 // ── Decorative fish & stream lines behind everything ──────
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _DecoPainter(
-                      fishes: _fishes,
-                      streamLines: _streamLines,
-                    ),
-                  ),
-                ),
+                const Positioned.fill(child: FishBackground()),
 
                 // ── White content card ─────────────────────────────────────
                 Center(
@@ -279,151 +171,6 @@ class _PortfolioPageState extends State<PortfolioPage>
     );
   }
 
-  // ── What I do ────────────────────────────────────────────────────────────
-  Widget _whatIDo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _section('What I do'),
-        const SizedBox(height: 24),
-        _pillar(
-          'Architecture',
-          'I design extensible plugin-based systems that support diverse hardware models — '
-              'replacing monolithic legacy code with clean, modular foundations that teams can reason about.',
-        ),
-        const SizedBox(height: 20),
-        _pillar(
-          'Delivery',
-          'I automate the boring stuff so humans don\'t have to. CI/CD pipelines, Docker, Azure, '
-              'weekly releases — I cut our delivery time by 40% and stopped regressions before they hit users.',
-        ),
-        const SizedBox(height: 20),
-        _pillar(
-          'Hardware',
-          'I write low-level C# drivers that talk to real spectroscopy instruments. '
-              'There\'s something deeply satisfying about bridging physical hardware and a clean software API.',
-        ),
-      ],
-    );
-  }
-
-  Widget _pillar(String title, String body) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            width: 2,
-            height: 28,
-            decoration: BoxDecoration(
-              color: _accent.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: _dark,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    height: 1.7,
-                    color: _muted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Skills ───────────────────────────────────────────────────────────────
-  Widget _skills() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _skillGroup('Languages', ['C#', 'Python', 'C++', 'Java', 'JavaScript']),
-        const SizedBox(height: 22),
-        _skillGroup('Frameworks & tools', ['.NET', 'WPF', 'WinForms', 'Godot']),
-        const SizedBox(height: 22),
-        _skillGroup('DevOps & cloud', [
-          'Azure',
-          'Docker',
-          'GitHub Actions',
-          'Ansible',
-          'Semaphore',
-          'CI/CD',
-        ]),
-        const SizedBox(height: 22),
-        _skillGroup('Also comfortable with', [
-          'Git',
-          'Test automation',
-          'System debugging',
-          'Spectroscopy drivers',
-        ]),
-      ],
-    );
-  }
-
-  Widget _skillGroup(String label, List<String> skills) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: _muted,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: skills
-              .map(
-                (s) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _accent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    s,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: _accent,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-      ],
-    );
-  }
-
   // ── Projects ─────────────────────────────────────────────────────────────
   Widget _projects() {
     return Column(
@@ -551,44 +298,4 @@ class _PortfolioPageState extends State<PortfolioPage>
       ],
     );
   }
-}
-
-// ── Decorative background painter ──────────────────────────────────────────
-class _DecoPainter extends CustomPainter {
-  final List<FishModel> fishes;
-  final List<StreamLineModel> streamLines;
-
-  _DecoPainter({required this.fishes, required this.streamLines});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()..style = PaintingStyle.fill;
-    for (var line in streamLines) {
-      linePaint.color = Colors.white.withValues(alpha: line.opacity);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(line.x, line.y, line.length, line.thickness),
-          Radius.circular(line.thickness / 2),
-        ),
-        linePaint,
-      );
-    }
-
-    for (var fish in fishes) {
-      canvas.save();
-      canvas.translate(fish.x, fish.y);
-      canvas.rotate(atan2(fish.dy, fish.dx) + sin(fish.phase) * 0.2);
-      FishPainter.drawFish(
-        canvas,
-        Size(fish.size * 1.5, fish.size),
-        fish.color,
-        fish.phase,
-        false,
-      );
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DecoPainter old) => true;
 }

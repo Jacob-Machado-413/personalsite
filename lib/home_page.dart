@@ -5,9 +5,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 import 'fish_widget.dart';
 import 'fish_model.dart';
-import 'stream_line_model.dart';
+
 import 'water_background.dart';
 import 'fps_meter.dart';
+import 'fish_background.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,13 +20,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   // Configuration Settings
-  static const int _backgroundFishCount = 80;
-  static const int _streamLineCount = 15;
   static const bool _enablePostProcess = true;
   static const double _postBlurRadius = 1.2; // 0=crisp, ~1.5=soft underwater
-  static const Color _backgroundFishColor = Colors.blueAccent;
-  static const double _backgroundFishAlpha = 0.2;
-  static const double _backgroundFishSpeedMultiplier = 3.0;
 
   static const Color _interactiveFishColor = Colors.redAccent;
   static const double _interactiveFishSpeedMultiplier = 4.0;
@@ -49,7 +45,7 @@ class _HomePageState extends State<HomePage>
   late Ticker _ticker;
   ui.FragmentShader? _postShader;
   final List<FishModel> _fishes = [];
-  final List<StreamLineModel> _streamLines = [];
+
   final Random _random = Random();
   bool _initialized = false;
   Size? _lastSize;
@@ -58,8 +54,6 @@ class _HomePageState extends State<HomePage>
   double _waterTime = 0.0;
   Duration _lastWaterElapsed = Duration.zero;
 
-  // Cached filtered lists to avoid allocating every frame
-  late final List<FishModel> _backgroundFishes;
   late final FishModel _interactiveFish;
 
   @override
@@ -89,39 +83,6 @@ class _HomePageState extends State<HomePage>
     _initialized = true;
     _lastSize = size;
 
-    // Add stream lines
-    for (int i = 0; i < _streamLineCount; i++) {
-      _streamLines.add(
-        StreamLineModel(
-          x: _random.nextDouble() * size.width,
-          y: _random.nextDouble() * size.height,
-          length: 50 + _random.nextDouble() * 150,
-          thickness: 1 + _random.nextDouble() * 2,
-          speed:
-              (0.5 + _random.nextDouble() * 1.5) *
-              _backgroundFishSpeedMultiplier *
-              0.5,
-          opacity: 0.1 + _random.nextDouble() * 0.2, // Very faint white lines
-        ),
-      );
-    }
-
-    // Add simple standard fish
-    for (int i = 0; i < _backgroundFishCount; i++) {
-      _fishes.add(
-        FishModel(
-          x: _random.nextDouble() * size.width,
-          y: _random.nextDouble() * size.height,
-          dx:
-              (0.1 + _random.nextDouble() * 0.4) *
-              _backgroundFishSpeedMultiplier, // Random speed, right only
-          dy: (_random.nextDouble() - 0.5) * 0.3, // Reduced vertical drift
-          color: _backgroundFishColor.withValues(alpha: _backgroundFishAlpha),
-          size: 40 + _random.nextDouble() * 30,
-        ),
-      );
-    }
-
     _fishes.add(
       FishModel(
         x: _random.nextDouble() * size.width,
@@ -135,9 +96,7 @@ class _HomePageState extends State<HomePage>
       ),
     );
 
-    // Cache filtered lists to avoid re-allocating every build
-    _backgroundFishes = _fishes.where((f) => !f.isInteractive).toList();
-    _interactiveFish = _fishes.firstWhere((f) => f.isInteractive);
+    _interactiveFish = _fishes.first;
   }
 
   double getDx() {
@@ -176,18 +135,11 @@ class _HomePageState extends State<HomePage>
           fish.x *= scaleX;
           fish.y *= scaleY;
         }
-        for (var line in _streamLines) {
-          line.x *= scaleX;
-          line.y *= scaleY;
-        }
       }
       _lastSize = mediaSize;
 
       for (var fish in _fishes) {
         fish.update(dt, mediaSize, mousePosition: _mousePosition);
-      }
-      for (var line in _streamLines) {
-        line.update(dt, mediaSize);
       }
     });
   }
@@ -220,11 +172,13 @@ class _HomePageState extends State<HomePage>
                 children: [
                   // Background Layer (Stream lines and background fish)
                   Positioned.fill(
-                    child: CustomPaint(
-                      painter: BackgroundPainter(
-                        fishes: _backgroundFishes,
-                        streamLines: _streamLines,
-                      ),
+                    child: const FishBackground(
+                      fishCount: 80,
+                      streamLineCount: 15,
+                      fishAlpha: 0.2,
+                      fishSpeedMultiplier: 3.0,
+                      minFishSize: 40,
+                      maxFishSize: 70,
                     ),
                   ),
                   // Interactive Fish Bodies (Kept as widgets for hit testing)
@@ -410,52 +364,6 @@ class _HomePageState extends State<HomePage>
         ),
       ),
     );
-  }
-}
-
-class BackgroundPainter extends CustomPainter {
-  final List<FishModel> fishes;
-  final List<StreamLineModel> streamLines;
-
-  BackgroundPainter({required this.fishes, required this.streamLines});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Draw stream lines
-    final linePaint = Paint()..style = PaintingStyle.fill;
-    for (var line in streamLines) {
-      linePaint.color = Colors.white.withValues(alpha: line.opacity);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(line.x, line.y, line.length, line.thickness),
-          Radius.circular(line.thickness / 2),
-        ),
-        linePaint,
-      );
-    }
-
-    // Draw background fish
-    for (var fish in fishes) {
-      canvas.save();
-      canvas.translate(fish.x, fish.y);
-      canvas.rotate(atan2(fish.dy, fish.dx) + sin(fish.phase) * 0.2);
-
-      // Draw fish body using the static method from FishPainter
-      FishPainter.drawFish(
-        canvas,
-        Size(fish.size * 1.5, fish.size),
-        fish.color,
-        fish.phase,
-        false, // No eyes for background fish
-      );
-
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant BackgroundPainter oldDelegate) {
-    return true; // Always repaint as positions change every tick
   }
 }
 
