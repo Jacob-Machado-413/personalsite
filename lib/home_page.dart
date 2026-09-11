@@ -23,6 +23,8 @@ class _HomePageState extends State<HomePage>
   static const bool _enablePostProcess = true;
   static const double _postBlurRadius = 1.2; // 0=crisp, ~1.5=soft underwater
 
+  static const bool _enableFpsMeter = true;
+
   static const Color _interactiveFishColor = Colors.redAccent;
   static const double _interactiveFishSpeedMultiplier = 4.0;
 
@@ -172,13 +174,14 @@ class _HomePageState extends State<HomePage>
                 children: [
                   // Background Layer (Stream lines and background fish)
                   Positioned.fill(
-                    child: const FishBackground(
+                    child: FishBackground(
                       fishCount: 80,
                       streamLineCount: 15,
                       fishAlpha: 0.2,
                       fishSpeedMultiplier: 3.0,
                       minFishSize: 40,
                       maxFishSize: 70,
+                      mousePosition: _mousePosition,
                     ),
                   ),
                   // Interactive Fish Bodies (Kept as widgets for hit testing)
@@ -233,6 +236,7 @@ class _HomePageState extends State<HomePage>
                                   _PortalPageRoute(
                                     pageBuilder: builder,
                                     portalCenter: fishCenter,
+                                    routeName: route,
                                   ),
                                 );
                               }
@@ -285,7 +289,8 @@ class _HomePageState extends State<HomePage>
               children: [
                 filteredLayer,
                 // FPS Meter
-                Positioned(top: 8, right: 8, child: const FPSMeter()),
+                if (_enableFpsMeter)
+                  const Positioned(top: 8, right: 8, child: FPSMeter()),
                 //  Instructions Text (Unfiltered)
                 Center(
                   child: Column(
@@ -373,7 +378,9 @@ class _PortalPageRoute extends PageRouteBuilder {
   _PortalPageRoute({
     required WidgetBuilder pageBuilder,
     required Offset portalCenter,
+    required String routeName,
   }) : super(
+         settings: RouteSettings(name: routeName),
          pageBuilder: (context, animation, _) => pageBuilder(context),
          transitionDuration: const Duration(milliseconds: 700),
          reverseTransitionDuration: const Duration(milliseconds: 500),

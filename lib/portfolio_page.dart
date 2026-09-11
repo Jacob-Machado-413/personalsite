@@ -70,6 +70,27 @@ class _PortfolioPageState extends State<PortfolioPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    if (Navigator.canPop(context)) {
+                                      Navigator.pop(context);
+                                    } else {
+                                      Navigator.pushNamedAndRemoveUntil(
+                                        context,
+                                        '/',
+                                        (_) => false,
+                                      );
+                                    }
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(bottom: 28),
+                                    child: Icon(
+                                      Icons.arrow_back,
+                                      size: 20,
+                                      color: _muted,
+                                    ),
+                                  ),
+                                ),
                                 _intro(),
                                 const SizedBox(height: 64),
                                 _section('What I\'ve made'),
@@ -94,27 +115,6 @@ class _PortfolioPageState extends State<PortfolioPage> {
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ── Floating back button ──────────────────────────────────
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 20,
                       ),
                     ),
                   ),
