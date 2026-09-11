@@ -60,6 +60,7 @@ flutter:
 
   shaders:
     - shaders/water.frag
+    - shaders/underwater.frag
     - shaders/kuwahara.frag
 
   # To add assets to your application, add an assets section, like this:

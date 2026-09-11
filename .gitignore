@@ -39,11 +39,13 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Unused platform scaffolding — this project only ships for web.
+# Regenerate with: flutter create --platforms=android,ios,linux,macos,windows .
+/android/
+/ios/
+/linux/
+/macos/
+/windows/
 
 #manually added
 Jacob_Machado_CV.md
-Dockerfile
