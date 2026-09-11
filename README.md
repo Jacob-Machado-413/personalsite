@@ -9,7 +9,8 @@ Every fish is drawn with `Canvas` paths — no sprites — animated off a tail-w
 phase driving both the bend and a pulsed thrust, so they swim rather than slide.
 Three GLSL shaders sit in `shaders/`: `water.frag` paints the caustics,
 `underwater.frag` post-processes the scene (blur, vignette, chromatic
-aberration), `kuwahara.frag` is a spare. Constants top `lib/home_page.dart`.
+aberration), `kuwahara.frag` was what i wanted to do but was too heavy on browser performance. 
+Constants top `lib/home_page.dart`.
 
 ```bash
 flutter pub get
