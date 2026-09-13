@@ -9,6 +9,7 @@ import 'fish_model.dart';
 import 'water_background.dart';
 import 'fps_meter.dart';
 import 'fish_background.dart';
+import 'projects.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,7 +24,7 @@ class _HomePageState extends State<HomePage>
   static const bool _enablePostProcess = true;
   static const double _postBlurRadius = 1.2; // 0=crisp, ~1.5=soft underwater
 
-  static const bool _enableFpsMeter = true;
+  static const bool _enableFpsMeter = false;
 
   static const Color _interactiveFishColor = Colors.redAccent;
   static const double _interactiveFishSpeedMultiplier = 4.0;
@@ -56,8 +57,6 @@ class _HomePageState extends State<HomePage>
   double _waterTime = 0.0;
   Duration _lastWaterElapsed = Duration.zero;
 
-  late final FishModel _interactiveFish;
-
   @override
   void initState() {
     super.initState();
@@ -85,20 +84,32 @@ class _HomePageState extends State<HomePage>
     _initialized = true;
     _lastSize = size;
 
-    _fishes.add(
-      FishModel(
-        x: _random.nextDouble() * size.width,
-        y: _random.nextDouble() * size.height,
-        dx: getDx(),
-        dy: (_random.nextDouble() - 0.5) * 0.6, // Reduced vertical drift
-        color: _interactiveFishColor,
-        size: 60 + _random.nextDouble() * 20,
-        destinationRoute: '/portfolio',
-        hoverTooltip: 'About Me',
-      ),
-    );
+    // One fish per destination: the About Me hub, then every project.
+    // Spawn them in evenly spaced horizontal bands with a little jitter, so
+    // they don't all start stacked on top of each other.
+    final band = size.height / kFishDestinations.length;
+    for (int i = 0; i < kFishDestinations.length; i++) {
+      final destination = kFishDestinations[i];
+      final fishSize = 60 + _random.nextDouble() * 20;
+      final bandTop = band * i;
+      final y = (bandTop + _random.nextDouble() * band).clamp(
+        0.0,
+        (size.height - fishSize).clamp(0.0, double.infinity),
+      );
 
-    _interactiveFish = _fishes.first;
+      _fishes.add(
+        FishModel(
+          x: _random.nextDouble() * size.width,
+          y: y,
+          dx: getDx(),
+          dy: (_random.nextDouble() - 0.5) * 0.6, // Reduced vertical drift
+          color: _interactiveFishColor,
+          size: fishSize,
+          destinationRoute: destination.route,
+          hoverTooltip: destination.label,
+        ),
+      );
+    }
   }
 
   double getDx() {
@@ -185,7 +196,7 @@ class _HomePageState extends State<HomePage>
                     ),
                   ),
                   // Interactive Fish Bodies (Kept as widgets for hit testing)
-                  ...[_interactiveFish].map((fish) {
+                  ..._fishes.map((fish) {
                     Widget fishWidget = Fish(
                       color: fish.color,
                       size: fish.size,
