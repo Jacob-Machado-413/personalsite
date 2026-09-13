@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_shaders/flutter_shaders.dart';
 import 'fish_widget.dart';
-import 'fish_model.dart';
 
 import 'water_background.dart';
 import 'fps_meter.dart';
 import 'fish_background.dart';
 import 'projects.dart';
+import 'school.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,9 +25,6 @@ class _HomePageState extends State<HomePage>
   static const double _postBlurRadius = 1.2; // 0=crisp, ~1.5=soft underwater
 
   static const bool _enableFpsMeter = false;
-
-  static const Color _interactiveFishColor = Colors.redAccent;
-  static const double _interactiveFishSpeedMultiplier = 4.0;
 
   static const Color _hoverHaloColor = Colors.white;
   static const double _hoverHaloAlpha = 0.2;
@@ -47,11 +44,20 @@ class _HomePageState extends State<HomePage>
 
   late Ticker _ticker;
   ui.FragmentShader? _postShader;
-  final List<FishModel> _fishes = [];
 
-  final Random _random = Random();
-  bool _initialized = false;
-  Size? _lastSize;
+  /// Background school and item fish, stepped together by [_ticker].
+  final School _school = School(
+    config: const SchoolConfig(
+      fishCount: 80,
+      streamLineCount: 15,
+      fishAlpha: 0.2,
+      fishSpeedMultiplier: 3.0,
+      minFishSize: 40,
+      maxFishSize: 70,
+    ),
+    destinations: kFishDestinations,
+  );
+
   Duration _lastTick = Duration.zero;
   Offset? _mousePosition;
   double _waterTime = 0.0;
@@ -79,47 +85,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  void _initFishes(Size size) {
-    if (_initialized) return;
-    _initialized = true;
-    _lastSize = size;
-
-    // One fish per destination: the About Me hub, then every project.
-    // Spawn them in evenly spaced horizontal bands with a little jitter, so
-    // they don't all start stacked on top of each other.
-    final band = size.height / kFishDestinations.length;
-    for (int i = 0; i < kFishDestinations.length; i++) {
-      final destination = kFishDestinations[i];
-      final fishSize = 60 + _random.nextDouble() * 20;
-      final bandTop = band * i;
-      final y = (bandTop + _random.nextDouble() * band).clamp(
-        0.0,
-        (size.height - fishSize).clamp(0.0, double.infinity),
-      );
-
-      _fishes.add(
-        FishModel(
-          x: _random.nextDouble() * size.width,
-          y: y,
-          dx: getDx(),
-          dy: (_random.nextDouble() - 0.5) * 0.6, // Reduced vertical drift
-          color: _interactiveFishColor,
-          size: fishSize,
-          destinationRoute: destination.route,
-          hoverTooltip: destination.label,
-        ),
-      );
-    }
-  }
-
-  double getDx() {
-    // Red fish should only swim left (negative dx)
-    double dx = -(_random.nextDouble() * 0.5) * _interactiveFishSpeedMultiplier;
-    // ensure red fishes don't stand still visually
-    if (dx > -1.5) dx = -1.5;
-    return dx;
-  }
-
   void _tick(Duration elapsed) {
     if (!mounted) return;
     // Calculate delta to make movement independent of frame rate
@@ -134,26 +99,9 @@ class _HomePageState extends State<HomePage>
     _waterTime += waterDt;
 
     final mediaSize = MediaQuery.of(context).size;
-    // if (mediaSize.width == 0 || mediaSize.height == 0) return;
 
     setState(() {
-      // Handle page resizes to redistribute fish evenly
-      if (_lastSize != null &&
-          (mediaSize.width != _lastSize!.width ||
-              mediaSize.height != _lastSize!.height)) {
-        double scaleX = mediaSize.width / _lastSize!.width;
-        double scaleY = mediaSize.height / _lastSize!.height;
-
-        for (var fish in _fishes) {
-          fish.x *= scaleX;
-          fish.y *= scaleY;
-        }
-      }
-      _lastSize = mediaSize;
-
-      for (var fish in _fishes) {
-        fish.update(dt, mediaSize, mousePosition: _mousePosition);
-      }
+      _school.update(dt, mediaSize, mousePosition: _mousePosition);
     });
   }
 
@@ -172,9 +120,7 @@ class _HomePageState extends State<HomePage>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final size = Size(constraints.maxWidth, constraints.maxHeight);
-            if (size.width > 0 && !_initialized) {
-              _initFishes(size);
-            }
+            _school.populate(size);
 
             // Layer 1: Elements to be filtered (Background, lines, fish bodies)
             Widget filteredLayer = WaterBackground(
@@ -184,19 +130,9 @@ class _HomePageState extends State<HomePage>
               child: Stack(
                 children: [
                   // Background Layer (Stream lines and background fish)
-                  Positioned.fill(
-                    child: FishBackground(
-                      fishCount: 80,
-                      streamLineCount: 15,
-                      fishAlpha: 0.2,
-                      fishSpeedMultiplier: 3.0,
-                      minFishSize: 40,
-                      maxFishSize: 70,
-                      mousePosition: _mousePosition,
-                    ),
-                  ),
+                  Positioned.fill(child: FishBackground.shared(_school)),
                   // Interactive Fish Bodies (Kept as widgets for hit testing)
-                  ..._fishes.map((fish) {
+                  ..._school.itemFish.map((fish) {
                     Widget fishWidget = Fish(
                       color: fish.color,
                       size: fish.size,
@@ -327,7 +263,7 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
                 // Fish Tooltips (Unfiltered)
-                ..._fishes.map((fish) {
+                ..._school.itemFish.map((fish) {
                   if (!fish.isHovered) return const SizedBox.shrink();
 
                   double adjustedX = (fish.isInteractive && fish.isHovered)

@@ -5,7 +5,9 @@ import 'package:site/fish_widget.dart';
 import 'package:site/home_page.dart';
 import 'package:site/main.dart';
 import 'package:site/project_page.dart';
+import 'package:site/portfolio_page.dart';
 import 'package:site/projects.dart';
+import 'package:site/school.dart';
 
 void main() {
   test('every project has a distinct, well-formed route', () {
@@ -90,6 +92,60 @@ void main() {
       (w) => w is Fish && w.color == Colors.redAccent,
     );
     expect(redFish, findsNWidgets(kFishDestinations.length));
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('one school holds both the background fish and the item fish', () {
+    final school = School(
+      config: const SchoolConfig(fishCount: 12, streamLineCount: 3),
+      destinations: kFishDestinations,
+    );
+    expect(school.populated, isFalse);
+
+    school.populate(const Size(800, 600));
+
+    expect(school.populated, isTrue);
+    expect(school.schoolFish.length, 12);
+    expect(school.streamLines.length, 3);
+    expect(school.itemFish.length, kFishDestinations.length);
+    expect(school.allFish.length, 12 + kFishDestinations.length);
+
+    // Item fish carry the destinations; background fish are scenery.
+    expect(school.itemFish.every((f) => f.isInteractive), isTrue);
+    expect(school.schoolFish.any((f) => f.isInteractive), isFalse);
+  });
+
+  test('populate is idempotent and ignores a degenerate size', () {
+    final school = School(config: const SchoolConfig(fishCount: 5));
+
+    school.populate(Size.zero);
+    expect(school.populated, isFalse);
+    expect(school.schoolFish, isEmpty);
+
+    school.populate(const Size(800, 600));
+    school.populate(const Size(1200, 900));
+    expect(school.schoolFish.length, 5);
+  });
+
+  test('a school with no destinations has no item fish', () {
+    final school = School(config: const SchoolConfig(fishCount: 4))
+      ..populate(const Size(800, 600));
+
+    expect(school.itemFish, isEmpty);
+    expect(school.schoolFish.length, 4);
+  });
+
+  testWidgets('content pages run the background alone, with no item fish', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: PortfolioPage()));
+    await tester.pump();
+
+    expect(
+      find.byWidgetPredicate((w) => w is Fish && w.color == Colors.redAccent),
+      findsNothing,
+    );
 
     await tester.pumpWidget(const SizedBox());
   });
