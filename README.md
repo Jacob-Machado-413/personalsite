@@ -1,5 +1,5 @@
-# jacobmachado.com
-# phyllistine.com
+# jacobmachado.com /  phyllistine.com
+
 
 My personal site — [jacobmachado.com](https://jacobmachado.com). Flutter for the
 web, because a static page seemed boring. It's an underwater scene: a school of
