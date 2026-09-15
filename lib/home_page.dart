@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -20,7 +19,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  // Configuration Settings
   static const bool _enablePostProcess = true;
   static const double _postBlurRadius = 1.2; // 0=crisp, ~1.5=soft underwater
 
@@ -45,7 +43,6 @@ class _HomePageState extends State<HomePage>
   late Ticker _ticker;
   ui.FragmentShader? _postShader;
 
-  /// Background school and item fish, stepped together by [_ticker].
   final School _school = School(
     config: const SchoolConfig(
       fishCount: 80,
@@ -87,12 +84,10 @@ class _HomePageState extends State<HomePage>
 
   void _tick(Duration elapsed) {
     if (!mounted) return;
-    // Calculate delta to make movement independent of frame rate
     double dt = (elapsed.inMilliseconds - _lastTick.inMilliseconds) / 16.666;
     if (dt > 10.0) dt = 1.0; // Prevent huge jumps if suspended
     _lastTick = elapsed;
 
-    // Advance water shader time (consolidated into main ticker)
     double waterDt =
         (elapsed.inMicroseconds - _lastWaterElapsed.inMicroseconds) / 1000000.0;
     _lastWaterElapsed = elapsed;
@@ -122,21 +117,18 @@ class _HomePageState extends State<HomePage>
             final size = Size(constraints.maxWidth, constraints.maxHeight);
             _school.populate(size);
 
-            // Layer 1: Elements to be filtered (Background, lines, fish bodies)
             Widget filteredLayer = WaterBackground(
               topColor: _topGradientColor,
               bottomColor: _bottomGradientColor,
               time: _waterTime,
               child: Stack(
                 children: [
-                  // Background Layer (Stream lines and background fish)
                   Positioned.fill(child: FishBackground.shared(_school)),
-                  // Interactive Fish Bodies (Kept as widgets for hit testing)
                   ..._school.itemFish.map((fish) {
                     Widget fishWidget = Fish(
                       color: fish.color,
                       size: fish.size,
-                      angle: atan2(fish.dy, fish.dx) + sin(fish.phase) * 0.2,
+                      angle: fish.heading,
                       phase: fish.phase,
                       hasEyes: fish.isInteractive,
                     );
@@ -231,14 +223,11 @@ class _HomePageState extends State<HomePage>
               }, child: filteredLayer);
             }
 
-            // Combined Layer: Filtered content with unfiltered text on top
             return Stack(
               children: [
                 filteredLayer,
-                // FPS Meter
                 if (_enableFpsMeter)
                   const Positioned(top: 8, right: 8, child: FPSMeter()),
-                //  Instructions Text (Unfiltered)
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -262,7 +251,6 @@ class _HomePageState extends State<HomePage>
                     ],
                   ),
                 ),
-                // Fish Tooltips (Unfiltered)
                 ..._school.itemFish.map((fish) {
                   if (!fish.isHovered) return const SizedBox.shrink();
 
@@ -319,8 +307,6 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-// ── Page transition: circular portal expanding from the fish's position ──
-
 class _PortalPageRoute extends PageRouteBuilder {
   _PortalPageRoute({
     required WidgetBuilder pageBuilder,
@@ -345,7 +331,6 @@ class _PortalPageRoute extends PageRouteBuilder {
                final maxR = _maxCornerDistance(portalCenter, size);
                final radius = 4.0 + curved.value * (maxR - 4.0);
 
-               // Fade the new page in as the circle expands
                final opacity = (curved.value - 0.3).clamp(0.0, 1.0) / 0.7;
 
                return Opacity(

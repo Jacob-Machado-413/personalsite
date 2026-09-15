@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'content_scaffold.dart';
 import 'projects.dart';
 
-/// One page per [Project], reached by its own red fish.
 class ProjectPage extends StatelessWidget {
   final Project project;
 

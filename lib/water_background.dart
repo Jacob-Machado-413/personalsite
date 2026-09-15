@@ -46,7 +46,6 @@ class _WaterBackgroundState extends State<WaterBackground> {
   @override
   Widget build(BuildContext context) {
     if (_shader == null) {
-      // Fallback while loading
       return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -90,13 +89,11 @@ class _WaterPainter extends CustomPainter {
     shader.setFloat(1, size.height);
     shader.setFloat(2, time);
 
-    // topColor (r, g, b, a)
     shader.setFloat(3, topColor.r);
     shader.setFloat(4, topColor.g);
     shader.setFloat(5, topColor.b);
     shader.setFloat(6, topColor.a);
 
-    // bottomColor (r, g, b, a)
     shader.setFloat(7, bottomColor.r);
     shader.setFloat(8, bottomColor.g);
     shader.setFloat(9, bottomColor.b);

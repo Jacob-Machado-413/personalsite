@@ -1,21 +1,14 @@
-/// One portfolio entry. Each gets its own route and its own red fish.
 class Project {
-  /// Route path, e.g. '/specsuite'.
   final String route;
 
-  /// Page heading, and the fish's hover tooltip.
   final String title;
 
-  /// One-line stack summary shown under the heading.
   final String stack;
 
-  /// Opening paragraph.
   final String blurb;
 
-  /// Bullets under the blurb.
   final List<String> highlights;
 
-  /// Optional outbound link shown at the bottom of the page.
   final String? url;
   final String? urlLabel;
 
@@ -104,15 +97,9 @@ const List<Project> kProjects = [
   ),
 ];
 
-/// Something a red fish on the home page swims you to.
-///
-/// The About Me hub and every project are the same kind of thing here, so the
-/// home page can spawn one fish per entry without special-casing any of them.
 class FishDestination {
-  /// Route name, registered in main.dart.
   final String route;
 
-  /// Shown in the fish's hover tooltip.
   final String label;
 
   const FishDestination({required this.route, required this.label});
@@ -123,7 +110,6 @@ const FishDestination kAboutMe = FishDestination(
   label: 'About Me',
 );
 
-/// About Me first, then one per project.
 final List<FishDestination> kFishDestinations = [
   kAboutMe,
   for (final project in kProjects)

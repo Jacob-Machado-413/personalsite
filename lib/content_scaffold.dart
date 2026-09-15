@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'water_background.dart';
 import 'fish_background.dart';
 
-// ── Shared text colors (dark on white) ─────────────────────────────────────
 const Color kDark = Color(0xFF1A1A1A);
 const Color kMuted = Color(0xFF5A6A7A);
 const Color kAccent = Color(0xFF0D7CB0);
@@ -11,14 +10,11 @@ const Color kAccent = Color(0xFF0D7CB0);
 const Color kWaterTop = Color.fromARGB(255, 125, 218, 255);
 const Color kWaterBottom = Color.fromARGB(255, 49, 155, 197);
 
-/// Open an off-site link, ignoring it if the platform refuses.
 Future<void> launchExternal(String raw) async {
   final uri = Uri.parse(raw);
   if (await canLaunchUrl(uri)) await launchUrl(uri);
 }
 
-/// The white content card over the water, shared by every non-home page:
-/// background fish, a back arrow, and a scrolling column of [children].
 class ContentScaffold extends StatelessWidget {
   final List<Widget> children;
 
@@ -43,10 +39,8 @@ class ContentScaffold extends StatelessWidget {
         bottomColor: kWaterBottom,
         child: Stack(
           children: [
-            // ── Decorative fish & stream lines behind everything ──────────
             const Positioned.fill(child: FishBackground()),
 
-            // ── White content card ────────────────────────────────────────
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 860),
@@ -104,7 +98,6 @@ class ContentScaffold extends StatelessWidget {
   }
 }
 
-/// Small caps-ish section rule used to break up a content page.
 class SectionHeader extends StatelessWidget {
   final String title;
 
@@ -132,7 +125,6 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// A tappable external link, styled as underlined accent text.
 class ExternalLink extends StatelessWidget {
   final String label;
   final String url;

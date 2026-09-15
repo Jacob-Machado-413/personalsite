@@ -10,8 +10,6 @@ class PortfolioPage extends StatelessWidget {
       children: [
         _intro(),
         const SizedBox(height: 24),
-        // The fish are the only route to the project pages, so say so for
-        // anyone who lands here without having seen the home page.
         const Text(
           "The other red fish are projects — follow one to see what I've built.",
           style: TextStyle(
@@ -37,7 +35,6 @@ class PortfolioPage extends StatelessWidget {
     );
   }
 
-  // ── Intro ────────────────────────────────────────────────────────────────
   Widget _intro() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,7 +78,6 @@ class PortfolioPage extends StatelessWidget {
     );
   }
 
-  // ── Contact ──────────────────────────────────────────────────────────────
   Widget _contact() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

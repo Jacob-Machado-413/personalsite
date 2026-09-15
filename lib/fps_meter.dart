@@ -8,7 +8,8 @@ class FPSMeter extends StatefulWidget {
   State<FPSMeter> createState() => _FPSMeterState();
 }
 
-class _FPSMeterState extends State<FPSMeter> with SingleTickerProviderStateMixin {
+class _FPSMeterState extends State<FPSMeter>
+    with SingleTickerProviderStateMixin {
   int _frameCount = 0;
   double _fps = 0;
   late Ticker _ticker;

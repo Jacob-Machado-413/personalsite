@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'fish_model.dart';
@@ -6,12 +5,6 @@ import 'fish_widget.dart';
 import 'school.dart';
 import 'stream_line_model.dart';
 
-/// Paints the background school and its stream lines.
-///
-/// Two modes: on its own it owns a [School] and a Ticker, which is how the
-/// content pages use it. Given a school by [FishBackground.shared] it only
-/// paints, and whoever owns that school steps it — that way the home page's
-/// item fish and the background swim in the same simulation.
 class FishBackground extends StatefulWidget {
   final School? school;
   final SchoolConfig config;
@@ -108,12 +101,18 @@ class _FishBackgroundPainter extends CustomPainter {
     }
 
     for (var fish in fishes) {
+      final double width = fish.size * 1.5;
+      final double height = fish.size;
+
       canvas.save();
-      canvas.translate(fish.x, fish.y);
-      canvas.rotate(atan2(fish.dy, fish.dx) + sin(fish.phase) * 0.2);
+      // Rotate about the fish's centre. Rotating about the corner swings the body
+      // through an arc on every heading change, amplifying small course corrections.
+      canvas.translate(fish.x + width / 2, fish.y + height / 2);
+      canvas.rotate(fish.heading);
+      canvas.translate(-width / 2, -height / 2);
       FishPainter.drawFish(
         canvas,
-        Size(fish.size * 1.5, fish.size),
+        Size(width, height),
         fish.color,
         fish.phase,
         false,
