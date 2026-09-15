@@ -11,10 +11,8 @@ void main() {
     vec2 fragCoord = FlutterFragCoord().xy;
     vec2 st = fragCoord / u_resolution.xy;
     
-    // Background gradient
     vec4 bgColor = mix(u_colorTop, u_colorBottom, st.y);
     
-    // Scale and aspect ratio correct
     st.x *= u_resolution.x / max(u_resolution.y, 1.0);
 
     vec2 p = st * 6.0; // scale of the ripples
@@ -29,7 +27,6 @@ void main() {
     
     float v = cos(p.x + p.y + 1.0) * 0.5 + 0.5;
     
-    // Add caustic highlights to the background color
     bgColor.rgb += vec3(v * 0.15); // Add light highlights
     
     fragColor = bgColor;

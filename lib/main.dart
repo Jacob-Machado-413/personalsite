@@ -21,8 +21,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const HomePage(),
         '/portfolio': (context) => const PortfolioPage(),
-        // One route per portfolio entry; the home page's red fish look these
-        // up by name, so adding a Project here is all a new fish needs.
         for (final project in kProjects)
           project.route: (context) => ProjectPage(project: project),
       },
