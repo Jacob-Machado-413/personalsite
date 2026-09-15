@@ -119,6 +119,11 @@ class School {
   static const Color itemFishColor = Colors.redAccent;
 
   final Random _random;
+
+  final List<List<FishModel>> _cells = [];
+  final _Accum _accum = _Accum();
+  int _cols = 0;
+  int _rows = 0;
   Size? _lastSize;
   bool _populated = false;
   double _time = 0;
@@ -224,6 +229,7 @@ class School {
 
   void _flock(double dt, Size bounds) {
     if (allFish.isEmpty) return;
+    final bool gridded = _rebuildGrid(bounds);
 
     // Forces accumulate here and are applied by [FishModel.update], so every
     // fish steers off the same snapshot. Committing inside the scan would let
@@ -234,55 +240,59 @@ class School {
           ? itemProfile
           : schoolProfile;
 
-      Offset separation = Offset.zero;
-      Offset alignment = Offset.zero;
-      Offset cohesion = Offset.zero;
+      _accum.reset();
+
+      if (gridded &&
+          !fish.isInteractive &&
+          profile.separationRadius <= FlockTuning.neighbourRadius) {
+        final int cx = (fish.x / FlockTuning.neighbourRadius).floor().clamp(
+          0,
+          _cols - 1,
+        );
+        final int cy = (fish.y / FlockTuning.neighbourRadius).floor().clamp(
+          0,
+          _rows - 1,
+        );
+        for (int oy = -1; oy <= 1; oy++) {
+          final int gy = cy + oy;
+          if (gy < 0 || gy >= _rows) continue;
+          for (int ox = -1; ox <= 1; ox++) {
+            int gx = cx + ox;
+            if (gx < 0) gx += _cols;
+            if (gx >= _cols) gx -= _cols;
+            for (final other in _cells[gy * _cols + gx]) {
+              _consider(fish, other, profile, bounds.width);
+            }
+          }
+        }
+      } else {
+        for (final other in allFish) {
+          _consider(fish, other, profile, bounds.width);
+        }
+      }
+
+      final Offset separation = _accum.separation;
+      final Offset alignment = _accum.alignment;
+      final Offset cohesion = _accum.cohesion;
+      final double separationWeight = _accum.separationWeight;
+      final double neighbourWeight = _accum.neighbourWeight;
+
       Offset makeWay = Offset.zero;
-      double separationWeight = 0;
-      double neighbourWeight = 0;
       double makeWayWeight = 0;
-
-      final double scan = max(
-        FlockTuning.neighbourRadius,
-        max(profile.separationRadius, profile.avoidRadius),
-      );
-      final double scanSq = scan * scan;
-
-      for (final other in allFish) {
-        if (identical(other, fish)) continue;
-
-        final Offset delta = _wrappedDelta(fish, other, bounds.width);
-        final double distanceSq = delta.dx * delta.dx + delta.dy * delta.dy;
-        if (distanceSq < 1e-9 || distanceSq > scanSq) continue;
-
-        final double distance = sqrt(distanceSq);
-
-        if (profile.avoid > 0 &&
-            other.isInteractive &&
-            !fish.isInteractive &&
-            distance < profile.avoidRadius) {
+      if (profile.avoid > 0 && !fish.isInteractive) {
+        for (final red in itemFish) {
+          final Offset delta = _wrappedDelta(fish, red, bounds.width);
+          final double distance = delta.distance;
+          if (distance < 1e-9 || distance >= profile.avoidRadius) continue;
           final (Offset push, double urgency) = _makeWay(
             delta,
             distance,
-            other,
+            red,
             profile.avoidRadius,
           );
           makeWay += push * urgency;
           makeWayWeight += urgency;
         }
-
-        if (distance < profile.separationRadius) {
-          final double push = 1.0 - distance / profile.separationRadius;
-          separation -= delta * (push / distance);
-          separationWeight += push;
-        }
-
-        if (distance > FlockTuning.neighbourRadius) continue;
-
-        final double influence = 1.0 - distance / FlockTuning.neighbourRadius;
-        alignment += other.velocity * influence;
-        cohesion += delta * influence;
-        neighbourWeight += influence;
       }
 
       Offset steering = Offset.zero;
@@ -331,6 +341,60 @@ class School {
 
       fish.applyForce(steering);
     }
+  }
+
+  bool _rebuildGrid(Size bounds) {
+    const double cell = FlockTuning.neighbourRadius;
+    final int cols = max(1, (bounds.width / cell).ceil());
+    final int rows = max(1, (bounds.height / cell).ceil());
+    if (cols < 4 || rows < 3) return false;
+
+    if (cols != _cols || rows != _rows) {
+      _cols = cols;
+      _rows = rows;
+      _cells
+        ..clear()
+        ..addAll(List.generate(cols * rows, (_) => <FishModel>[]));
+    } else {
+      for (final bucket in _cells) {
+        bucket.clear();
+      }
+    }
+
+    for (final fish in allFish) {
+      final int cx = (fish.x / cell).floor().clamp(0, cols - 1);
+      final int cy = (fish.y / cell).floor().clamp(0, rows - 1);
+      _cells[cy * cols + cx].add(fish);
+    }
+    return true;
+  }
+
+  void _consider(
+    FishModel fish,
+    FishModel other,
+    FlockProfile profile,
+    double width,
+  ) {
+    if (identical(other, fish)) return;
+
+    final Offset delta = _wrappedDelta(fish, other, width);
+    final double distanceSq = delta.dx * delta.dx + delta.dy * delta.dy;
+    if (distanceSq < 1e-9) return;
+
+    final double distance = sqrt(distanceSq);
+
+    if (distance < profile.separationRadius) {
+      final double push = 1.0 - distance / profile.separationRadius;
+      _accum.separation -= delta * (push / distance);
+      _accum.separationWeight += push;
+    }
+
+    if (distance > FlockTuning.neighbourRadius) return;
+
+    final double influence = 1.0 - distance / FlockTuning.neighbourRadius;
+    _accum.alignment += other.velocity * influence;
+    _accum.cohesion += delta * influence;
+    _accum.neighbourWeight += influence;
   }
 
   /// Steering toward [direction], scaled by how clear the signal is — a fish in
@@ -426,5 +490,21 @@ class School {
       line.x *= scaleX;
       line.y *= scaleY;
     }
+  }
+}
+
+class _Accum {
+  Offset separation = Offset.zero;
+  Offset alignment = Offset.zero;
+  Offset cohesion = Offset.zero;
+  double separationWeight = 0;
+  double neighbourWeight = 0;
+
+  void reset() {
+    separation = Offset.zero;
+    alignment = Offset.zero;
+    cohesion = Offset.zero;
+    separationWeight = 0;
+    neighbourWeight = 0;
   }
 }

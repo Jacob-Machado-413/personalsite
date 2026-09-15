@@ -28,3 +28,4 @@ flutter:
     - shaders/water.frag
     - shaders/underwater.frag
     - shaders/kuwahara.frag
+    - shaders/watercolor.frag

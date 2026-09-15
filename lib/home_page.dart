@@ -20,7 +20,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   static const bool _enablePostProcess = true;
-  static const double _postBlurRadius = 1.2;
+  static const double _paintWobble = 2.4;
+  static const double _paintGranulation = 0.18;
+  static const double _paintBlackLift = 0.09;
 
   static const bool _enableFpsMeter = true;
 
@@ -45,7 +47,7 @@ class _HomePageState extends State<HomePage>
 
   final School _school = School(
     config: const SchoolConfig(
-      fishCount: 160,
+      fishCount: 500,
       streamLineCount: 15,
       fishAlpha: 0.2,
       fishSpeedMultiplier: 3.0,
@@ -70,7 +72,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _loadShader() async {
     try {
       final program = await ui.FragmentProgram.fromAsset(
-        'shaders/underwater.frag',
+        'shaders/watercolor.frag',
       );
       if (mounted) {
         setState(() {
@@ -78,7 +80,7 @@ class _HomePageState extends State<HomePage>
         });
       }
     } catch (e) {
-      debugPrint("Failed to load underwater shader: $e");
+      debugPrint("Failed to load watercolor shader: $e");
     }
   }
 
@@ -199,7 +201,6 @@ class _HomePageState extends State<HomePage>
 
           if (_enablePostProcess && _postShader != null) {
             final shader = _postShader!;
-            final blur = _postBlurRadius;
             final time = _waterTime;
             filteredLayer = AnimatedSampler((
               ui.Image image,
@@ -210,7 +211,9 @@ class _HomePageState extends State<HomePage>
                 ..setFloat(0, size.width) // u_resolution.x
                 ..setFloat(1, size.height) // u_resolution.y
                 ..setFloat(2, time) // u_time
-                ..setFloat(3, blur) // u_blurRadius
+                ..setFloat(3, _paintWobble) // u_wobble
+                ..setFloat(4, _paintGranulation) // u_granulation
+                ..setFloat(5, _paintBlackLift) // u_blackLift
                 ..setImageSampler(0, image);
 
               canvas.drawRect(Offset.zero & size, Paint()..shader = shader);

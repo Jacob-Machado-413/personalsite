@@ -120,7 +120,7 @@ class FishPainter extends CustomPainter {
     canvas.drawPath(path, paint);
 
     final finPaint = Paint()
-      ..color = color.withValues(alpha: 200 / 255.0)
+      ..color = color.withValues(alpha: color.a * (200 / 255.0))
       ..style = PaintingStyle.fill;
 
     double finAttachTopX =
@@ -170,13 +170,13 @@ class FishPainter extends CustomPainter {
     if (hasEyes) {
       final eyePaint = Paint()..color = Colors.black;
       double eye1X =
-          headX + hUx * (size.width * 0.05) + hNx * (size.height * 0.08);
+          headX + hUx * (size.width * 0.05) + hNx * (size.height * 0.13);
       double eye1Y =
-          headY + hUy * (size.width * 0.05) + hNy * (size.height * 0.08);
+          headY + hUy * (size.width * 0.05) + hNy * (size.height * 0.13);
       double eye2X =
-          headX + hUx * (size.width * 0.05) - hNx * (size.height * 0.08);
+          headX + hUx * (size.width * 0.05) - hNx * (size.height * 0.13);
       double eye2Y =
-          headY + hUy * (size.width * 0.05) - hNy * (size.height * 0.08);
+          headY + hUy * (size.width * 0.05) - hNy * (size.height * 0.13);
 
       canvas.drawCircle(Offset(eye1X, eye1Y), size.height * 0.04, eyePaint);
       canvas.drawCircle(Offset(eye2X, eye2Y), size.height * 0.04, eyePaint);
