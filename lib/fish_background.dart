@@ -8,17 +8,12 @@ import 'stream_line_model.dart';
 class FishBackground extends StatefulWidget {
   final School? school;
   final SchoolConfig config;
-  final Offset? mousePosition;
 
-  const FishBackground({
-    super.key,
-    this.config = const SchoolConfig(),
-    this.mousePosition,
-  }) : school = null;
+  const FishBackground({super.key, this.config = const SchoolConfig()})
+    : school = null;
 
   const FishBackground.shared(School this.school, {super.key})
-    : config = const SchoolConfig(),
-      mousePosition = null;
+    : config = const SchoolConfig();
 
   @override
   State<FishBackground> createState() => _FishBackgroundState();
@@ -43,7 +38,9 @@ class _FishBackgroundState extends State<FishBackground>
 
   void _tick(Duration elapsed) {
     if (!mounted) return;
-    double dt = (elapsed.inMilliseconds - _lastTick.inMilliseconds) / 16.666;
+    double dt =
+        (elapsed.inMicroseconds - _lastTick.inMicroseconds) /
+        (1000000.0 / 60.0);
     if (dt > 10.0) dt = 1.0; // Prevent huge jumps if suspended
     _lastTick = elapsed;
 
@@ -51,7 +48,7 @@ class _FishBackgroundState extends State<FishBackground>
     if (size.isEmpty) return;
 
     setState(() {
-      _ownSchool!.update(dt, size, mousePosition: widget.mousePosition);
+      _ownSchool!.update(dt, size);
     });
   }
 

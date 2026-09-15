@@ -20,9 +20,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   static const bool _enablePostProcess = true;
-  static const double _postBlurRadius = 1.2; // 0=crisp, ~1.5=soft underwater
+  static const double _postBlurRadius = 1.2;
 
-  static const bool _enableFpsMeter = false;
+  static const bool _enableFpsMeter = true;
 
   static const Color _hoverHaloColor = Colors.white;
   static const double _hoverHaloAlpha = 0.2;
@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage>
 
   final School _school = School(
     config: const SchoolConfig(
-      fishCount: 80,
+      fishCount: 160,
       streamLineCount: 15,
       fishAlpha: 0.2,
       fishSpeedMultiplier: 3.0,
@@ -55,10 +55,10 @@ class _HomePageState extends State<HomePage>
     destinations: kFishDestinations,
   );
 
+  static const double _microsPerFrame = 1000000.0 / 60.0;
+
   Duration _lastTick = Duration.zero;
-  Offset? _mousePosition;
   double _waterTime = 0.0;
-  Duration _lastWaterElapsed = Duration.zero;
 
   @override
   void initState() {
@@ -84,19 +84,19 @@ class _HomePageState extends State<HomePage>
 
   void _tick(Duration elapsed) {
     if (!mounted) return;
-    double dt = (elapsed.inMilliseconds - _lastTick.inMilliseconds) / 16.666;
-    if (dt > 10.0) dt = 1.0; // Prevent huge jumps if suspended
+    // Microseconds, not milliseconds: Duration.inMilliseconds truncates, which
+    // on a perfect 60Hz clock alternates dt between 0.96 and 1.02 and shimmers.
+    final int deltaUs = elapsed.inMicroseconds - _lastTick.inMicroseconds;
     _lastTick = elapsed;
 
-    double waterDt =
-        (elapsed.inMicroseconds - _lastWaterElapsed.inMicroseconds) / 1000000.0;
-    _lastWaterElapsed = elapsed;
-    _waterTime += waterDt;
+    double dt = deltaUs / _microsPerFrame;
+    if (dt > 10.0) dt = 1.0; // Prevent huge jumps if suspended
+    _waterTime += deltaUs / 1000000.0;
 
     final mediaSize = MediaQuery.of(context).size;
 
     setState(() {
-      _school.update(dt, mediaSize, mousePosition: _mousePosition);
+      _school.update(dt, mediaSize);
     });
   }
 
@@ -109,150 +109,76 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: MouseRegion(
-        onHover: (event) => _mousePosition = event.localPosition,
-        onExit: (_) => _mousePosition = null,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final size = Size(constraints.maxWidth, constraints.maxHeight);
-            _school.populate(size);
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = Size(constraints.maxWidth, constraints.maxHeight);
+          _school.populate(size);
 
-            Widget filteredLayer = WaterBackground(
-              topColor: _topGradientColor,
-              bottomColor: _bottomGradientColor,
-              time: _waterTime,
-              child: Stack(
-                children: [
-                  Positioned.fill(child: FishBackground.shared(_school)),
-                  ..._school.itemFish.map((fish) {
-                    Widget fishWidget = Fish(
-                      color: fish.color,
-                      size: fish.size,
-                      angle: fish.heading,
-                      phase: fish.phase,
-                      hasEyes: fish.isInteractive,
-                    );
+          Widget filteredLayer = WaterBackground(
+            topColor: _topGradientColor,
+            bottomColor: _bottomGradientColor,
+            time: _waterTime,
+            child: Stack(
+              children: [
+                Positioned.fill(child: FishBackground.shared(_school)),
+                ..._school.itemFish.map((fish) {
+                  Widget fishWidget = Fish(
+                    color: fish.color,
+                    size: fish.size,
+                    angle: fish.heading,
+                    phase: fish.phase,
+                    hasEyes: fish.isInteractive,
+                  );
 
-                    Widget content = fishWidget;
+                  Widget content = fishWidget;
 
-                    if (fish.isInteractive) {
-                      if (fish.isHovered) {
-                        content = Container(
-                          width: fish.size * 1.5,
-                          height: fish.size * 1.5,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _hoverHaloColor,
-                              width: 2,
-                            ),
-                            color: _hoverHaloColor.withValues(
-                              alpha: _hoverHaloAlpha,
-                            ),
+                  if (fish.isInteractive) {
+                    if (fish.isHovered) {
+                      content = Container(
+                        width: fish.size * 1.5,
+                        height: fish.size * 1.5,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _hoverHaloColor, width: 2),
+                          color: _hoverHaloColor.withValues(
+                            alpha: _hoverHaloAlpha,
                           ),
-                          child: Center(child: fishWidget),
-                        );
-                      }
-
-                      content = MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        onEnter: (_) => setState(() => fish.isHovered = true),
-                        onExit: (_) => setState(() => fish.isHovered = false),
-                        child: GestureDetector(
-                          onTap: () {
-                            final route = fish.destinationRoute;
-                            if (route != null) {
-                              final fishCenter = Offset(
-                                fish.x + fish.size / 2,
-                                fish.y + fish.size / 2,
-                              );
-                              final app = context
-                                  .findAncestorWidgetOfExactType<MaterialApp>();
-                              final builder = app?.routes?[route];
-                              if (builder != null) {
-                                Navigator.push(
-                                  context,
-                                  _PortalPageRoute(
-                                    pageBuilder: builder,
-                                    portalCenter: fishCenter,
-                                    routeName: route,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          child: content,
                         ),
+                        child: Center(child: fishWidget),
                       );
                     }
 
-                    double adjustedX = (fish.isInteractive && fish.isHovered)
-                        ? fish.x - fish.size * 0.25
-                        : fish.x;
-                    double adjustedY = (fish.isInteractive && fish.isHovered)
-                        ? fish.y - fish.size * 0.25
-                        : fish.y;
-
-                    return Positioned(
-                      left: adjustedX,
-                      top: adjustedY,
-                      child: content,
-                    );
-                  }),
-                ],
-              ),
-            );
-
-            if (_enablePostProcess && _postShader != null) {
-              final shader = _postShader!;
-              final blur = _postBlurRadius;
-              final time = _waterTime;
-              filteredLayer = AnimatedSampler((
-                ui.Image image,
-                Size size,
-                Canvas canvas,
-              ) {
-                shader
-                  ..setFloat(0, size.width) // u_resolution.x
-                  ..setFloat(1, size.height) // u_resolution.y
-                  ..setFloat(2, time) // u_time
-                  ..setFloat(3, blur) // u_blurRadius
-                  ..setImageSampler(0, image);
-
-                canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
-              }, child: filteredLayer);
-            }
-
-            return Stack(
-              children: [
-                filteredLayer,
-                if (_enableFpsMeter)
-                  const Positioned(top: 8, right: 8, child: FPSMeter()),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          "Follow a red fish to dive deeper.",
-                          style: TextStyle(fontSize: 20, color: Colors.black87),
-                          textAlign: TextAlign.center,
-                        ),
+                    content = MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      onEnter: (_) => setState(() => fish.isHovered = true),
+                      onExit: (_) => setState(() => fish.isHovered = false),
+                      child: GestureDetector(
+                        onTap: () {
+                          final route = fish.destinationRoute;
+                          if (route != null) {
+                            final fishCenter = Offset(
+                              fish.x + fish.size / 2,
+                              fish.y + fish.size / 2,
+                            );
+                            final app = context
+                                .findAncestorWidgetOfExactType<MaterialApp>();
+                            final builder = app?.routes?[route];
+                            if (builder != null) {
+                              Navigator.push(
+                                context,
+                                _PortalPageRoute(
+                                  pageBuilder: builder,
+                                  portalCenter: fishCenter,
+                                  routeName: route,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: content,
                       ),
-                    ],
-                  ),
-                ),
-                ..._school.itemFish.map((fish) {
-                  if (!fish.isHovered) return const SizedBox.shrink();
+                    );
+                  }
 
                   double adjustedX = (fish.isInteractive && fish.isHovered)
                       ? fish.x - fish.size * 0.25
@@ -261,47 +187,114 @@ class _HomePageState extends State<HomePage>
                       ? fish.y - fish.size * 0.25
                       : fish.y;
 
-                  double boxSize = (fish.isInteractive && fish.isHovered)
-                      ? fish.size * 1.5
-                      : fish.size;
-
                   return Positioned(
                     left: adjustedX,
                     top: adjustedY,
-                    width: boxSize,
-                    height: boxSize,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.center,
-                      children: [
-                        Positioned(
-                          top: -40,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black87,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              fish.hoverTooltip ?? 'Explore',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: content,
                   );
                 }),
               ],
-            );
-          },
-        ),
+            ),
+          );
+
+          if (_enablePostProcess && _postShader != null) {
+            final shader = _postShader!;
+            final blur = _postBlurRadius;
+            final time = _waterTime;
+            filteredLayer = AnimatedSampler((
+              ui.Image image,
+              Size size,
+              Canvas canvas,
+            ) {
+              shader
+                ..setFloat(0, size.width) // u_resolution.x
+                ..setFloat(1, size.height) // u_resolution.y
+                ..setFloat(2, time) // u_time
+                ..setFloat(3, blur) // u_blurRadius
+                ..setImageSampler(0, image);
+
+              canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+            }, child: filteredLayer);
+          }
+
+          return Stack(
+            children: [
+              filteredLayer,
+              if (_enableFpsMeter)
+                const Positioned(top: 8, right: 8, child: FPSMeter()),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        "Follow a red fish to dive deeper.",
+                        style: TextStyle(fontSize: 20, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ..._school.itemFish.map((fish) {
+                if (!fish.isHovered) return const SizedBox.shrink();
+
+                double adjustedX = (fish.isInteractive && fish.isHovered)
+                    ? fish.x - fish.size * 0.25
+                    : fish.x;
+                double adjustedY = (fish.isInteractive && fish.isHovered)
+                    ? fish.y - fish.size * 0.25
+                    : fish.y;
+
+                double boxSize = (fish.isInteractive && fish.isHovered)
+                    ? fish.size * 1.5
+                    : fish.size;
+
+                return Positioned(
+                  left: adjustedX,
+                  top: adjustedY,
+                  width: boxSize,
+                  height: boxSize,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      Positioned(
+                        top: -40,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            fish.hoverTooltip ?? 'Explore',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          );
+        },
       ),
     );
   }

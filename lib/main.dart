@@ -19,7 +19,6 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.blue),
       initialRoute: '/',
       routes: {
-        // One route per portfolio entry; the home page's red fish look these up by name.
         '/': (context) => const HomePage(),
         '/portfolio': (context) => const PortfolioPage(),
         for (final project in kProjects)

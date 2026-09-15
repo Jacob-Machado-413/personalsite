@@ -16,7 +16,8 @@ void main() {
     vec4 blur = vec4(0.0);
     float weightSum = 0.0;
 
-    blur += texture(u_image, uv) * 2.0;
+    vec4 original = texture(u_image, uv);
+    blur += original * 2.0;
     weightSum += 2.0;
 
     blur += texture(u_image, uv + vec2( r,  0) * texel);
@@ -34,7 +35,6 @@ void main() {
 
     blur /= weightSum;
 
-    vec4 original = texture(u_image, uv);
     float mixFactor = 0.35; // 35% blur, 65% original
     vec4 result = mix(original, blur, mixFactor);
 
