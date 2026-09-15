@@ -20,11 +20,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   static const bool _enablePostProcess = true;
+  static const int _postProcessWarmupMs = 1500;
+  static const double _slowFrameMs = 28.0;
+  static const double _slowBudgetMs = 1500.0;
   static const double _paintWobble = 2.4;
   static const double _paintGranulation = 0.18;
   static const double _paintBlackLift = 0.09;
 
-  static const bool _enableFpsMeter = true;
+  static const bool _enableFpsMeter = false;
 
   static const Color _hoverHaloColor = Colors.white;
   static const double _hoverHaloAlpha = 0.2;
@@ -58,6 +61,9 @@ class _HomePageState extends State<HomePage>
   );
 
   static const double _microsPerFrame = 1000000.0 / 60.0;
+
+  bool _postProcessAffordable = true;
+  double _slowMsAccrued = 0;
 
   Duration _lastTick = Duration.zero;
   double _waterTime = 0.0;
@@ -94,6 +100,17 @@ class _HomePageState extends State<HomePage>
     double dt = deltaUs / _microsPerFrame;
     if (dt > 10.0) dt = 1.0; // Prevent huge jumps if suspended
     _waterTime += deltaUs / 1000000.0;
+
+    if (_postProcessAffordable &&
+        elapsed.inMilliseconds > _postProcessWarmupMs) {
+      final double frameMs = deltaUs / 1000.0;
+      if (frameMs > _slowFrameMs && frameMs < 2000.0) {
+        _slowMsAccrued += frameMs;
+        if (_slowMsAccrued > _slowBudgetMs) _postProcessAffordable = false;
+      } else {
+        _slowMsAccrued = 0;
+      }
+    }
 
     final mediaSize = MediaQuery.of(context).size;
 
@@ -199,7 +216,9 @@ class _HomePageState extends State<HomePage>
             ),
           );
 
-          if (_enablePostProcess && _postShader != null) {
+          if (_enablePostProcess &&
+              _postProcessAffordable &&
+              _postShader != null) {
             final shader = _postShader!;
             final time = _waterTime;
             filteredLayer = AnimatedSampler((
